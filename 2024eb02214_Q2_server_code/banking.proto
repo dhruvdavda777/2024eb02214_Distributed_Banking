@@ -1,0 +1,138 @@
+// banking.proto
+// Student: Dhruv Davda
+// BITS ID: 2024eb02214
+// Email: 2024eb02214@online.bits-pilani.ac.in
+// Distributed banking system - gRPC service and message definitions.
+//
+// Two services are defined:
+//   1. AccountService     - getBalance, updateBalance
+//   2. TransactionService - initiateTransfer, getTransactionHistory
+//
+// Errors are returned as standard gRPC status codes (not inside the messages):
+//   INVALID_ARGUMENT    - invalid data (empty user id, amount <= 0, same account, ...)
+//   NOT_FOUND           - user / account does not exist
+//   FAILED_PRECONDITION - insufficient funds
+
+syntax = "proto3";
+
+package banking;
+
+import "google/protobuf/timestamp.proto";
+
+// ===================================================================
+// Account Management Service
+// ===================================================================
+service AccountService {
+  // getBalance: retrieve the current balance of a user's account.
+  rpc GetBalance (GetBalanceRequest) returns (BalanceResponse);
+
+  // updateBalance: update (credit or debit) the balance after a transaction.
+  rpc UpdateBalance (UpdateBalanceRequest) returns (BalanceResponse);
+}
+
+// ===================================================================
+// Transaction Service
+// ===================================================================
+service TransactionService {
+  // initiateTransfer: transfer money from one account to another.
+  rpc InitiateTransfer (TransferRequest) returns (TransferResponse);
+
+  // getTransactionHistory: list the transactions of a user, newest first.
+  rpc GetTransactionHistory (TransactionHistoryRequest) returns (TransactionHistoryResponse);
+}
+
+// ===================================================================
+// Shared enums
+// ===================================================================
+
+// Direction of a balance update.
+enum UpdateType {
+  UPDATE_TYPE_UNSPECIFIED = 0;  // proto3 default value - rejected as invalid
+  CREDIT = 1;                   // add money (e.g. deposit)
+  DEBIT  = 2;                   // remove money (e.g. withdrawal)
+}
+
+// Kind of transaction stored in the history.
+enum TransactionType {
+  TRANSACTION_TYPE_UNSPECIFIED = 0;
+  DEPOSIT    = 1;   // created by updateBalance with CREDIT
+  WITHDRAWAL = 2;   // created by updateBalance with DEBIT
+  TRANSFER   = 3;   // created by initiateTransfer
+}
+
+// Outcome of a transaction.
+enum TransactionStatus {
+  TRANSACTION_STATUS_UNSPECIFIED = 0;
+  SUCCESS = 1;
+  FAILED  = 2;      // e.g. a transfer rejected for insufficient funds
+}
+
+// ===================================================================
+// AccountService messages
+// ===================================================================
+
+message GetBalanceRequest {
+  string user_id = 1;               // e.g. "U1001"
+}
+
+message UpdateBalanceRequest {
+  string user_id     = 1;
+  double amount      = 2;           // must be > 0, at most 2 decimal places
+  UpdateType type    = 3;           // CREDIT or DEBIT
+  string description = 4;           // optional note, e.g. "ATM deposit"
+}
+
+message BalanceResponse {
+  string user_id        = 1;
+  string account_holder = 2;        // name of the account holder
+  double balance        = 3;        // balance after the call
+  string currency       = 4;        // e.g. "INR"
+  string transaction_id = 5;        // set by UpdateBalance, empty for GetBalance
+  string message        = 6;        // human-readable result
+}
+
+// ===================================================================
+// TransactionService messages
+// ===================================================================
+
+message TransferRequest {
+  string from_user_id = 1;
+  string to_user_id   = 2;
+  double amount       = 3;          // must be > 0, at most 2 decimal places
+  string description  = 4;          // optional note, e.g. "Rent"
+}
+
+message TransferResponse {
+  string transaction_id      = 1;
+  TransactionStatus status   = 2;
+  string from_user_id        = 3;
+  string to_user_id          = 4;
+  double amount              = 5;
+  double from_balance_after  = 6;   // sender's balance after the transfer
+  google.protobuf.Timestamp timestamp = 7;
+  string message             = 8;
+}
+
+message TransactionHistoryRequest {
+  string user_id = 1;
+  int32  limit   = 2;               // max transactions to return; 0 = all
+}
+
+// One entry in the transaction history.
+message Transaction {
+  string transaction_id      = 1;
+  TransactionType type       = 2;
+  TransactionStatus status   = 3;
+  string from_user_id        = 4;   // empty for deposits
+  string to_user_id          = 5;   // empty for withdrawals
+  double amount              = 6;
+  google.protobuf.Timestamp timestamp = 7;
+  string description         = 8;
+  string failure_reason      = 9;   // set only when status = FAILED
+}
+
+message TransactionHistoryResponse {
+  string user_id                    = 1;
+  repeated Transaction transactions = 2;   // newest first
+  int32 total_count                 = 3;   // total transactions for the user
+}

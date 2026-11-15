@@ -15,7 +15,7 @@ The server and client use identical generated Protocol Buffers bindings. See the
 
 ## Provenance
 
-These are personalized copies of the supplied assignment materials. The videos have an added student-details strip and narration adjusted to a lower, more masculine pitch and resonance while preserving its pace and spoken content. They are adapted recordings, not newly recorded demonstrations.
+These are personalized copies of the supplied assignment materials. The videos have an added student-details strip and no audio tracks. All videos are silent. They are adapted recordings, not newly recorded demonstrations.
 
 ## Verification
 
